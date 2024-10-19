@@ -48,11 +48,15 @@ async function fetchExternalSpecs(spec){
   try {
     let results = await Promise.all(
       spec.external_specs.map(s => {
-        const url = Object.values(s)[0];
-        return axios.get(url);
+        if (typeof Object.values(s)[0] === 'string') {
+          const url = Object.values(s)[0];
+          return axios.get(url);
+        } else {
+          return null;
+        }
       })
     );
-    results = results.map((r, index) => (r.status === 200 ? { [Object.keys(spec.external_specs[index])[0]]: r.data } : null)).filter(r_1 => r_1);
+    results = results.filter(r => r !== null).map((r, index) => (r.status === 200 ? { [Object.keys(spec.external_specs[index])[0]]: r.data } : null)).filter(r_1 => r_1);
     return results.map(r_2 => createNewDLWithTerms(Object.keys(r_2)[0], Object.values(r_2)[0]));
   } catch (e) {
     return console.log(e);
@@ -83,9 +87,33 @@ function createNewDLWithTerms(title, html) {
   return newDl.outerHTML;
 }
 
+function mergeCustomRefs(externalSpecs, specCorpus) {
+  externalSpecs.forEach(extSpec => {
+    const key = Object.keys(extSpec)[0];
+    const value = extSpec[key];
+    if (typeof value === 'object') {
+      const requiredParams = ['authors', 'href', 'title', 'rawDate'];
+      const missingParams = requiredParams.filter(param => !value[param]);
+      
+      if (missingParams.length === 0) {
+        specCorpus[key] = {
+          authors: value.authors,
+          href: value.href,
+          title: value.title,
+          rawDate: value.rawDate,
+          status: value.status || 'N/A'
+        };
+      } else {
+        console.warn(`Invalid custom reference for ${key}. Missing parameters: ${missingParams.join(', ')}`);
+      }
+    }
+  });
+}
+
 module.exports = {
   findExternalSpecByKey,
   validateReferences,
   fetchExternalSpecs,
-  createNewDLWithTerms
+  createNewDLWithTerms,
+  mergeCustomRefs
 }

@@ -1,10 +1,10 @@
-
 module.exports = function(options = {}) {
 
   const {
     fetchExternalSpecs,
     validateReferences,
-    findExternalSpecByKey
+    findExternalSpecByKey,
+    mergeCustomRefs
   } = require('./references.js');
   const gulp = require('gulp');
   const fs = require('fs-extra');
@@ -198,8 +198,11 @@ module.exports = function(options = {}) {
             return fs.readFile(spec.spec_directory + _path, 'utf8').catch(e => reject(e))
           })).then(async docs => {
             const features = (({ source, logo }) => ({ source, logo }))(spec);
-            if (spec.external_specs && !externalReferences) {
-              externalReferences = await fetchExternalSpecs(spec);
+            if (spec.external_specs) {
+              mergeCustomRefs(spec.external_specs, specCorpus);
+              if (!externalReferences) {
+                externalReferences = await fetchExternalSpecs(spec);
+              }
             }
             let doc = docs.join("\n");
             doc = applyReplacers(doc);
